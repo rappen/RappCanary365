@@ -15,7 +15,6 @@ namespace Rappen.Canary365.Plugin
             {
                 ts.Trace("Trace enter: {0:o}\n", DateTime.Now);
                 var ctx = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
-                ts.Trace("Found context in serviceprovider {0}", 0);
                 TraceContext(ts, ctx);
             }
             catch (Exception ex)
