@@ -29,13 +29,13 @@ namespace Rappen.Canary365.Plugin
 
         private static void TraceContext(ITracingService ts, IPluginExecutionContext ctx)
         {
-            ts.Trace("Message: {0}", ctx.MessageName);
-            ts.Trace("Stage: {0}", ctx.Stage);
-            ts.Trace("Mode: {0}", ctx.Mode);
-            ts.Trace("Entity: {0}", ctx.PrimaryEntityName);
+            ts.Trace("Message : {0}", ctx.MessageName);
+            ts.Trace("Stage   : {0}", ctx.Stage);
+            ts.Trace("Mode    : {0}", ctx.Mode);
+            ts.Trace("Entity  : {0}", ctx.PrimaryEntityName);
             if (!ctx.PrimaryEntityId.Equals(Guid.Empty))
             {
-                ts.Trace("Id: {0}", ctx.PrimaryEntityId);
+                ts.Trace("Id      : {0}", ctx.PrimaryEntityId);
             }
             var ip = ctx.InputParameters;
 
@@ -51,7 +51,7 @@ namespace Rappen.Canary365.Plugin
             }
         }
 
-        private static void TraceAndAlign<T> (string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts)
+        private static void TraceAndAlign<T>(string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts)
         {
             if (pc == null || pc.Count() == 0) { return; }
             var keylen = pc.Max(p => p.Key.Length);
