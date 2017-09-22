@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Rappen.Tracer365.Plugin
+namespace Rappen.Canary365.Plugin
 {
     public class Canary : IPlugin
     {
