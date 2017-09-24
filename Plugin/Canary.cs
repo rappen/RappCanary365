@@ -8,12 +8,23 @@ namespace Rappen.Canary365.Plugin
 {
     public class Canary : IPlugin
     {
+        private string _unsec;
+
+        public Canary(string unsecure)
+        {
+            _unsec = unsecure;
+        }
+
         public void Execute(IServiceProvider serviceProvider)
         {
             var ts = (ITracingService)serviceProvider.GetService(typeof(ITracingService));
             try
             {
                 ts.Trace("Trace enter: {0:o}\n", DateTime.Now);
+                if (!string.IsNullOrEmpty(_unsec))
+                {
+                    ts.Trace("Configuration: {0}", _unsec);
+                }
                 var ctx = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
                 TraceContext(ts, ctx);
             }
@@ -27,7 +38,7 @@ namespace Rappen.Canary365.Plugin
             }
         }
 
-        private static void TraceContext(ITracingService ts, IPluginExecutionContext ctx)
+        private void TraceContext(ITracingService ts, IPluginExecutionContext ctx)
         {
             ts.Trace("Message : {0}", ctx.MessageName);
             ts.Trace("Stage   : {0}", ctx.Stage);
@@ -37,14 +48,14 @@ namespace Rappen.Canary365.Plugin
             {
                 ts.Trace("Id      : {0}", ctx.PrimaryEntityId);
             }
-            var ip = ctx.InputParameters;
+            ts.Trace("");
 
-            TraceAndAlign("IP", ctx.InputParameters, ts);
-            TraceAndAlign("OP", ctx.OutputParameters, ts);
-            TraceAndAlign("SV", ctx.SharedVariables, ts);
-            TraceAndAlign("Pre", ctx.PreEntityImages, ts);
-            TraceAndAlign("Post", ctx.PostEntityImages, ts);
-            if (ctx.ParentContext != null)
+            TraceAndAlign("InputParameters", ctx.InputParameters, ts);
+            TraceAndAlign("OutputParameters", ctx.OutputParameters, ts);
+            TraceAndAlign("SharedVariables", ctx.SharedVariables, ts);
+            TraceAndAlign("PreEntityImages", ctx.PreEntityImages, ts);
+            TraceAndAlign("PostEntityImages", ctx.PostEntityImages, ts);
+            if (ctx.ParentContext != null && !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("PARENTCONTEXT=TRUE"))
             {
                 ts.Trace("\nParent Context:");
                 TraceContext(ts, ctx.ParentContext);
@@ -54,29 +65,31 @@ namespace Rappen.Canary365.Plugin
         private static void TraceAndAlign<T>(string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts)
         {
             if (pc == null || pc.Count() == 0) { return; }
+            ts.Trace(topic);
             var keylen = pc.Max(p => p.Key.Length);
             foreach (var p in pc)
             {
-                ts.Trace($"{topic} {p.Key}{new string(' ', keylen - p.Key.Length)} = {ValueToString(p.Value)}");
+                ts.Trace($"  {p.Key}{new string(' ', keylen - p.Key.Length)} = {ValueToString(p.Value, 2)}");
             }
         }
 
-        private static string ValueToString(object v)
+        private static string ValueToString(object v, int indent = 1)
         {
+            var ind = new string(' ', indent * 2);
             if (v == null)
             {
-                return "<null>";
+                return $"{ind}<null>";
             }
             else if (v is Entity e)
             {
                 var keylen = e.Attributes.Count > 0 ? e.Attributes.Max(p => p.Key.Length) : 50;
-                return $"{e.LogicalName} {e.Id}\n  " + string.Join("\n  ", e.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value)}"));
+                return $"{e.LogicalName} {e.Id}\n{ind}" + string.Join($"\n{ind}", e.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, indent + 1)}"));
             }
             else if (v is ColumnSet c)
             {
                 var a = new List<string>(c.Columns);
                 a.Sort();
-                return "\n  " + string.Join("\n  ", a);
+                return $"\n{ind}" + string.Join($"\n{ind}", a);
             }
             else
             {
@@ -95,7 +108,7 @@ namespace Rappen.Canary365.Plugin
                 }
                 else
                 {
-                    r = v.ToString();
+                    r = v.ToString().Replace("\n", $"\n  {ind}");
                 }
                 return r + $" \t({v.GetType()})";
             }
