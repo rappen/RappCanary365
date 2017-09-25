@@ -4,7 +4,7 @@
 
 Have you ever needed a canary in your system? **Canary 365** is a lightweight solution for Microsoft Dynamics 365 with a Canary plugin that traces any and all events occuring down that Dynamics mine.
 
-Import the [solution](https://github.com/rappen/RappCanary365/tree/master/Solution) to get all kinds of events in the system written to the Plugin Trace Log. Add more steps, add images, add anything using Plugin Registration Tool, or disable existing steps to reduce the chatterness of the canary.
+Import the **[solution from latest release](https://github.com/rappen/RappCanary365/releases)** to get all kinds of events in the system written to the Plugin Trace Log. Add more steps, add images, add anything using Plugin Registration Tool, or disable existing steps to reduce the chatterness of the canary.
 
 Use Plugin Trace Viewer for XrmToolBox to view the results.
 
