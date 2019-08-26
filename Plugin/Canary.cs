@@ -91,6 +91,10 @@ namespace Rappen.Canary365.Plugin
                 a.Sort();
                 return $"\n{ind}" + string.Join($"\n{ind}", a);
             }
+            else if (v is FetchExpression f)
+            {
+                return $"{v}\n{ind}{f.Query}";
+            }
             else
             {
                 var r = string.Empty;
