@@ -1,4 +1,5 @@
-﻿using Microsoft.Xrm.Sdk;
+﻿using Microsoft.Crm.Sdk.Messages;
+using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,9 @@ namespace Rappen.Canary365.Plugin
                     ts.Trace("Configuration: {0}", _unsec);
                 }
                 var ctx = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
-                TraceContext(ts, ctx);
+                var sfact = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
+                var svc = sfact.CreateOrganizationService(ctx.UserId);
+                TraceContext(ts, ctx, svc);
             }
             catch (Exception ex)
             {
@@ -38,7 +41,7 @@ namespace Rappen.Canary365.Plugin
             }
         }
 
-        private void TraceContext(ITracingService ts, IPluginExecutionContext ctx)
+        private void TraceContext(ITracingService ts, IPluginExecutionContext ctx, IOrganizationService svc)
         {
             ts.Trace("Message : {0}", ctx.MessageName);
             ts.Trace("Stage   : {0}", ctx.Stage);
@@ -50,30 +53,30 @@ namespace Rappen.Canary365.Plugin
             }
             ts.Trace("");
 
-            TraceAndAlign("InputParameters", ctx.InputParameters, ts);
-            TraceAndAlign("OutputParameters", ctx.OutputParameters, ts);
-            TraceAndAlign("SharedVariables", ctx.SharedVariables, ts);
-            TraceAndAlign("PreEntityImages", ctx.PreEntityImages, ts);
-            TraceAndAlign("PostEntityImages", ctx.PostEntityImages, ts);
+            TraceAndAlign("InputParameters", ctx.InputParameters, ts, svc);
+            TraceAndAlign("OutputParameters", ctx.OutputParameters, ts, svc);
+            TraceAndAlign("SharedVariables", ctx.SharedVariables, ts, svc);
+            TraceAndAlign("PreEntityImages", ctx.PreEntityImages, ts, svc);
+            TraceAndAlign("PostEntityImages", ctx.PostEntityImages, ts, svc);
             if (ctx.ParentContext != null && !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("PARENTCONTEXT=TRUE"))
             {
                 ts.Trace("\nParent Context:");
-                TraceContext(ts, ctx.ParentContext);
+                TraceContext(ts, ctx.ParentContext, svc);
             }
         }
 
-        private static void TraceAndAlign<T>(string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts)
+        private static void TraceAndAlign<T>(string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts, IOrganizationService svc)
         {
             if (pc == null || pc.Count() == 0) { return; }
             ts.Trace(topic);
             var keylen = pc.Max(p => p.Key.Length);
             foreach (var p in pc)
             {
-                ts.Trace($"  {p.Key}{new string(' ', keylen - p.Key.Length)} = {ValueToString(p.Value, 2)}");
+                ts.Trace($"  {p.Key}{new string(' ', keylen - p.Key.Length)} = {ValueToString(p.Value, svc, 2)}");
             }
         }
 
-        private static string ValueToString(object v, int indent = 1)
+        private static string ValueToString(object v, IOrganizationService svc, int indent = 1)
         {
             var ind = new string(' ', indent * 2);
             if (v == null)
@@ -83,7 +86,7 @@ namespace Rappen.Canary365.Plugin
             else if (v is Entity e)
             {
                 var keylen = e.Attributes.Count > 0 ? e.Attributes.Max(p => p.Key.Length) : 50;
-                return $"{e.LogicalName} {e.Id}\n{ind}" + string.Join($"\n{ind}", e.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, indent + 1)}"));
+                return $"{e.LogicalName} {e.Id}\n{ind}" + string.Join($"\n{ind}", e.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, svc, indent + 1)}"));
             }
             else if (v is ColumnSet c)
             {
@@ -94,6 +97,11 @@ namespace Rappen.Canary365.Plugin
             else if (v is FetchExpression f)
             {
                 return $"{v}\n{ind}{f.Query}";
+            }
+            else if (v is QueryExpression q)
+            {
+                var fx = (svc.Execute(new QueryExpressionToFetchXmlRequest { Query = q }) as QueryExpressionToFetchXmlResponse).FetchXml;
+                return $"{q}\n{ind}{fx}";
             }
             else
             {
