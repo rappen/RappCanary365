@@ -1,4 +1,17 @@
-﻿using Microsoft.Crm.Sdk.Messages;
+﻿/* ***********************************************************
+ * CanaryTracer.cs
+ * Found at: https://gist.github.com/rappen/b1aa858f0597f7cad0f6e301673a75b8
+ * Created by: Jonas Rapp https://jonasr.app/
+ *
+ * Writes everything from an IPluginExecutionContext to the Plugin Trace Log.
+ *
+ * Sample call:
+ *    tracingservice.TraceContext(context, includeparentcontext, includeattributetypes, convertqueries, service);
+ *
+ *               Enjoy responsibly.
+ * **********************************************************/
+
+using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
 using System;
