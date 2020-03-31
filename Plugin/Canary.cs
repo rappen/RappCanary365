@@ -25,7 +25,12 @@ namespace Rappen.Canary365.Plugin
                 var ctx = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
                 var sfact = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
                 var svc = sfact.CreateOrganizationService(ctx.UserId);
-                CanaryTracer.TraceContext(ts, ctx, svc, !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("PARENTCONTEXT=TRUE"), true);
+
+                var parentcontext = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("PARENTCONTEXT=TRUE");
+                var attributetypes = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("ATTRIBUTETYPES=TRUE");
+                var convertqueries = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("CONVERTQUERIES=TRUE");
+
+                ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, svc);
             }
             catch (Exception ex)
             {

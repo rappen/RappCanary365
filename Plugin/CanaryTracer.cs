@@ -9,94 +9,108 @@ namespace Rappen.Canary365.Plugin
 {
     public static class CanaryTracer
     {
-        public static void TraceContext(ITracingService ts, IPluginExecutionContext ctx, IOrganizationService svc, bool parentcontext, bool convertqueries, int depth = 1)
+        /// <summary>
+        /// Dumps everything interesting from the plugin context to the plugin trace log
+        /// </summary>
+        /// <param name="tracingservice"></param>
+        /// <param name="plugincontext">The plugin context to trace.</param>
+        /// <param name="parentcontext">Set to true if any parent contexts shall be traced too.</param>
+        /// <param name="attributetypes">Set to true to include information about attribute types.</param>
+        /// <param name="convertqueries">Set to true if any QueryExpression queries shall be converted to FetchXML and traced. Requires parameter service to be set.</param>
+        /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
+        public static void TraceContext(this ITracingService tracingservice, IPluginExecutionContext plugincontext, bool parentcontext, bool attributetypes, bool convertqueries, IOrganizationService service)
         {
-            if (ctx.Stage != 30)
+            tracingservice.TraceContext(plugincontext, parentcontext, attributetypes, convertqueries, service, 1);
+        }
+
+        private static void TraceContext(this ITracingService tracingservice, IPluginExecutionContext plugincontext, bool parentcontext, bool attributetypes, bool convertqueries, IOrganizationService service, int depth)
+        {
+            if (plugincontext.Stage != 30)
             {
-                ts.Trace("--- Context {0} Trace Start ---", depth);
-                ts.Trace("Message : {0}", ctx.MessageName);
-                ts.Trace("Stage   : {0}", ctx.Stage);
-                ts.Trace("Mode    : {0}", ctx.Mode);
-                ts.Trace("Depth   : {0}", ctx.Depth);
-                ts.Trace("Entity  : {0}", ctx.PrimaryEntityName);
-                if (!ctx.PrimaryEntityId.Equals(Guid.Empty))
+                tracingservice.Trace("--- Context {0} Trace Start ---", depth);
+                tracingservice.Trace("Message : {0}", plugincontext.MessageName);
+                tracingservice.Trace("Stage   : {0}", plugincontext.Stage);
+                tracingservice.Trace("Mode    : {0}", plugincontext.Mode);
+                tracingservice.Trace("Depth   : {0}", plugincontext.Depth);
+                tracingservice.Trace("Entity  : {0}", plugincontext.PrimaryEntityName);
+                if (!plugincontext.PrimaryEntityId.Equals(Guid.Empty))
                 {
-                    ts.Trace("Id      : {0}", ctx.PrimaryEntityId);
+                    tracingservice.Trace("Id      : {0}", plugincontext.PrimaryEntityId);
                 }
-                ts.Trace("");
+                tracingservice.Trace("");
 
-                TraceAndAlign("InputParameters", ctx.InputParameters, ts, svc, convertqueries);
-                TraceAndAlign("OutputParameters", ctx.OutputParameters, ts, svc, convertqueries);
-                TraceAndAlign("SharedVariables", ctx.SharedVariables, ts, svc, convertqueries);
-                TraceAndAlign("PreEntityImages", ctx.PreEntityImages, ts, svc, convertqueries);
-                TraceAndAlign("PostEntityImages", ctx.PostEntityImages, ts, svc, convertqueries);
-                ts.Trace("--- Context {0} Trace End ---", depth);
+                tracingservice.TraceAndAlign("InputParameters", plugincontext.InputParameters, attributetypes, convertqueries, service);
+                tracingservice.TraceAndAlign("OutputParameters", plugincontext.OutputParameters, attributetypes, convertqueries, service);
+                tracingservice.TraceAndAlign("SharedVariables", plugincontext.SharedVariables, attributetypes, convertqueries, service);
+                tracingservice.TraceAndAlign("PreEntityImages", plugincontext.PreEntityImages, attributetypes, convertqueries, service);
+                tracingservice.TraceAndAlign("PostEntityImages", plugincontext.PostEntityImages, attributetypes, convertqueries, service);
+                tracingservice.Trace("--- Context {0} Trace End ---", depth);
             }
-            if (parentcontext && ctx.ParentContext != null)
+            if (parentcontext && plugincontext.ParentContext != null)
             {
-                TraceContext(ts, ctx.ParentContext, svc, parentcontext, convertqueries, depth + 1);
+                tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, service, depth + 1);
             }
-            ts.Trace("");
+            tracingservice.Trace("");
         }
 
-        private static void TraceAndAlign<T>(string topic, IEnumerable<KeyValuePair<string, T>> pc, ITracingService ts, IOrganizationService svc, bool convertqueries)
+        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>> parametercollection, bool attributetypes, bool convertqueries, IOrganizationService service)
         {
-            if (pc == null || pc.Count() == 0) { return; }
-            ts.Trace(topic);
-            var keylen = pc.Max(p => p.Key.Length);
-            foreach (var p in pc)
+            if (parametercollection == null || parametercollection.Count() == 0) { return; }
+            tracingservice.Trace(topic);
+            var keylen = parametercollection.Max(p => p.Key.Length);
+            foreach (var parameter in parametercollection)
             {
-                ts.Trace($"  {p.Key}{new string(' ', keylen - p.Key.Length)} = {ValueToString(p.Value, svc, convertqueries, 2)}");
+                tracingservice.Trace($"  {parameter.Key}{new string(' ', keylen - parameter.Key.Length)} = {ValueToString(parameter.Value, attributetypes, convertqueries, service, 2)}");
             }
         }
 
-        private static string ValueToString(object v, IOrganizationService svc, bool convertqueries, int indent = 1)
+        private static string ValueToString(object value, bool attributetypes, bool convertqueries, IOrganizationService service, int indent = 1)
         {
-            var ind = new string(' ', indent * 2);
-            if (v == null)
+            var indentstring = new string(' ', indent * 2);
+            if (value == null)
             {
-                return $"{ind}<null>";
+                return $"{indentstring}<null>";
             }
-            else if (v is Entity e)
+            else if (value is Entity entity)
             {
-                var keylen = e.Attributes.Count > 0 ? e.Attributes.Max(p => p.Key.Length) : 50;
-                return $"{e.LogicalName} {e.Id}\n{ind}" + string.Join($"\n{ind}", e.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, svc, convertqueries, indent + 1)}"));
+                var keylen = entity.Attributes.Count > 0 ? entity.Attributes.Max(p => p.Key.Length) : 50;
+                return $"{entity.LogicalName} {entity.Id}\n{indentstring}" + string.Join($"\n{indentstring}", entity.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, attributetypes, convertqueries, service, indent + 1)}"));
             }
-            else if (v is ColumnSet c)
+            else if (value is ColumnSet columnset)
             {
-                var a = new List<string>(c.Columns);
-                a.Sort();
-                return $"\n{ind}" + string.Join($"\n{ind}", a);
+                var columnlist = new List<string>(columnset.Columns);
+                columnlist.Sort();
+                return $"\n{indentstring}" + string.Join($"\n{indentstring}", columnlist);
             }
-            else if (v is FetchExpression f)
+            else if (value is FetchExpression fetchexpression)
             {
-                return $"{v}\n{ind}{f.Query}";
+                return $"{value}\n{indentstring}{fetchexpression.Query}";
             }
-            else if (v is QueryExpression q && convertqueries)
+            else if (value is QueryExpression queryexpression && convertqueries && service != null)
             {
-                var fx = (svc.Execute(new QueryExpressionToFetchXmlRequest { Query = q }) as QueryExpressionToFetchXmlResponse).FetchXml;
-                return $"{q}\n{ind}{fx}";
+                var fetchxml = (service.Execute(new QueryExpressionToFetchXmlRequest { Query = queryexpression }) as QueryExpressionToFetchXmlResponse).FetchXml;
+                return $"{queryexpression}\n{indentstring}{fetchxml}";
             }
             else
             {
-                var r = string.Empty;
-                if (v is EntityReference er)
+                var result = string.Empty;
+                if (value is EntityReference entityreference)
                 {
-                    r = $"{er.LogicalName} {er.Id} {er.Name}";
+                    result = $"{entityreference.LogicalName} {entityreference.Id} {entityreference.Name}";
                 }
-                else if (v is OptionSetValue o)
+                else if (value is OptionSetValue optionsetvalue)
                 {
-                    r = o.Value.ToString();
+                    result = optionsetvalue.Value.ToString();
                 }
-                else if (v is Money m)
+                else if (value is Money money)
                 {
-                    r = m.Value.ToString();
+                    result = money.Value.ToString();
                 }
                 else
                 {
-                    r = v.ToString().Replace("\n", $"\n  {ind}");
+                    result = value.ToString().Replace("\n", $"\n  {indentstring}");
                 }
-                return r + $" \t({v.GetType()})";
+                return result + (attributetypes ? $" \t({value.GetType()})" : "");
             }
         }
     }
