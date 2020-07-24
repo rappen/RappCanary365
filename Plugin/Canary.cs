@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xrm.Sdk;
+using Rappen.CDS.Canary;
 using System;
 
 namespace Rappen.Canary365.Plugin
@@ -20,7 +21,7 @@ namespace Rappen.Canary365.Plugin
                 ts.Trace("Trace enter: {0:o}\n", DateTime.Now);
                 if (!string.IsNullOrEmpty(_unsec))
                 {
-                    ts.Trace("Configuration: {0}", _unsec);
+                    ts.Trace("Configuration:\n{0}", _unsec);
                 }
                 var ctx = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
                 var sfact = (IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
@@ -29,8 +30,9 @@ namespace Rappen.Canary365.Plugin
                 var parentcontext = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("PARENTCONTEXT=TRUE");
                 var attributetypes = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("ATTRIBUTETYPES=TRUE");
                 var convertqueries = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("CONVERTQUERIES=TRUE");
+                var expandcollections = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("EXPANDCOLLECTIONS=TRUE");
 
-                ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, svc);
+                ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, svc);
             }
             catch (Exception ex)
             {
