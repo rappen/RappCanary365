@@ -103,7 +103,7 @@ namespace Rappen.CDS.Canary
             }
             else if (value is EntityCollection collection)
             {
-                var result = $"{collection.EntityName} collection\n{indentstring} Records: {collection.Entities.Count}";
+                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}\n  TotalRecordCount: {collection.TotalRecordCount}\n  MoreRecords: {collection.MoreRecords}\n  PagingCookie: {collection.PagingCookie}";
                 if (expandcollections)
                 {
                     result += $"\n{indentstring}  {string.Join($"\n{indentstring}", collection.Entities.Select(e => ValueToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1)))}";
