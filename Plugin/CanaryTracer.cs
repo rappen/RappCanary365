@@ -39,7 +39,16 @@ namespace Rappen.CDS.Canary
         /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
         public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
         {
-            tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, service, 1);
+            try
+            {
+                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections,
+                    service, 1);
+            }
+            catch (Exception ex)
+            {
+                tracingservice.Trace("--- Exception while trying to TraceContext ---");
+                tracingservice.Trace($"Message : {ex.Message}");
+            }
         }
 
         private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int depth)
