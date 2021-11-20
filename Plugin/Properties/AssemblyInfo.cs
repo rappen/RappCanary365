@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Rappen")]
 [assembly: AssemblyProduct("RappTracer365")]
-[assembly: AssemblyCopyright("Copyright © Jonas Rapp 2017-2020")]
+[assembly: AssemblyCopyright("Copyright © Jonas Rapp 2017-2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("9.1.0.4")]
-[assembly: AssemblyFileVersion("9.1.0.4")]
+[assembly: AssemblyVersion("9.1.0.5")]
+[assembly: AssemblyFileVersion("9.1.0.5")]

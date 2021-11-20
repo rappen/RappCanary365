@@ -41,8 +41,7 @@ namespace Rappen.CDS.Canary
         {
             try
             {
-                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections,
-                    service, 1);
+                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, service, 1);
             }
             catch (Exception ex)
             {
@@ -113,11 +112,15 @@ namespace Rappen.CDS.Canary
             else if (value is EntityCollection collection)
             {
                 var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}\n  TotalRecordCount: {collection.TotalRecordCount}\n  MoreRecords: {collection.MoreRecords}\n  PagingCookie: {collection.PagingCookie}";
-                if (expandcollections)
+                if (expandcollections && collection.Entities.Count > 0)
                 {
-                    result += $"\n{indentstring}  {string.Join($"\n{indentstring}", collection.Entities.Select(e => ValueToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1)))}";
+                    result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent + 1);
                 }
                 return result;
+            }
+            else if (value is IEnumerable<Entity> entities)
+            {
+                return expandcollections ? $"{indentstring}{string.Join($"\n{indentstring}", entities.Select(e => ValueToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1)))}" : string.Empty;
             }
             else if (value is Entity entity)
             {
