@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("RappTracer365 Plugin")]
-[assembly: AssemblyDescription("The canary in your Microsoft Dynamics 365")]
+[assembly: AssemblyDescription("The canary in your Microsoft Dataverse")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Rappen")]
 [assembly: AssemblyProduct("RappTracer365")]
-[assembly: AssemblyCopyright("Copyright © Jonas Rapp 2017-2021")]
+[assembly: AssemblyCopyright("Copyright © Jonas Rapp 2017-2022")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -31,5 +31,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("9.1.0.5")]
-[assembly: AssemblyFileVersion("9.1.0.5")]
+[assembly: AssemblyVersion("9.1.0.6")]
+[assembly: AssemblyFileVersion("9.1.0.6")]
