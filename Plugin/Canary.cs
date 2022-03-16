@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.PluginTelemetry;
 using Rappen.CDS.Canary;
 using System;
 
@@ -33,6 +34,19 @@ namespace Rappen.Canary365.Plugin
                 var expandcollections = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("EXPANDCOLLECTIONS=TRUE");
 
                 ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, svc);
+     
+                var pt = (ILogger)serviceProvider.GetService(typeof(ILogger));
+                try
+                {
+                    pt.LogInformation("Canary");
+                    ts.Trace("PluginTelemetry OK");
+                }
+                catch (Exception ex)
+                {
+                    ts.Trace("PluginTelemetry Error:");
+                    ts.Trace(ex.Message);
+                    pt.LogError(ex, ex.Message);
+                }
             }
             catch (Exception ex)
             {
