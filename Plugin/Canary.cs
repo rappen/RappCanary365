@@ -38,7 +38,8 @@ namespace Rappen.Canary365.Plugin
                 var pt = (ILogger)serviceProvider.GetService(typeof(ILogger));
                 try
                 {
-                    pt.LogInformation("Canary");
+                    pt.LogInformation("Canary write by LogInformation");
+                    pt.LogTrace("Canary write by LogTrace");
                     ts.Trace("PluginTelemetry OK");
                 }
                 catch (Exception ex)
