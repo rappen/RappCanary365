@@ -77,10 +77,6 @@ namespace Rappen.Dataverse.Canary
         /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
         public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service)
         {
-            if (tracingservice == null)
-            {
-                return;
-            }
             try
             {
                 tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, 1);
@@ -94,31 +90,73 @@ namespace Rappen.Dataverse.Canary
 
         private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service, int depth)
         {
+            if (tracingservice == null)
+            {
+                return;
+            }
             if (context == null)
             {
                 tracingservice.Trace("No Context available.");
                 return;
             }
             var plugincontext = context as IPluginExecutionContext;
+            var plugincontext2 = context as IPluginExecutionContext2;
+            var plugincontext3 = context as IPluginExecutionContext3;
+            var plugincontext4 = context as IPluginExecutionContext4;
+            var plugincontext5 = context as IPluginExecutionContext5;
             if (includestage30 || plugincontext?.Stage != 30)
             {
-                tracingservice.Trace("--- Context {0} Trace Start ---", depth);
-                tracingservice.Trace("UserId  : {0}", context.UserId);
+                tracingservice.Trace($"--- Context {depth} Trace Start ---");
+                if (!string.IsNullOrEmpty(plugincontext5?.InitiatingUserAgent))
+                {
+                    tracingservice.Trace($"InitUserAgent: {plugincontext5.InitiatingUserAgent}");
+                }
+                tracingservice.Trace($"UserId       : {context.UserId}");
                 if (!context.UserId.Equals(context.InitiatingUserId))
                 {
-                    tracingservice.Trace("Initiat.: {0}", context.InitiatingUserId);
+                    tracingservice.Trace($"InitUserId   : {context.InitiatingUserId}");
                 }
-                tracingservice.Trace("Message : {0}", context.MessageName);
+                if (plugincontext3 != null)
+                {
+                    if (!plugincontext3.AuthenticatedUserId.Equals(Guid.Empty) && !plugincontext3.AuthenticatedUserId.Equals(context.UserId))
+                    {
+                        tracingservice.Trace($"AuthUserId   : {plugincontext3.AuthenticatedUserId}");
+                    }
+                }
+                if (plugincontext2 != null)
+                {
+                    if (!plugincontext2.UserAzureActiveDirectoryObjectId.Equals(Guid.Empty))
+                    {
+                        tracingservice.Trace($"UserAzureADId: {plugincontext2.UserAzureActiveDirectoryObjectId}");
+                    }
+                    if (!plugincontext2.InitiatingUserAzureActiveDirectoryObjectId.Equals(Guid.Empty) && !plugincontext2.InitiatingUserAzureActiveDirectoryObjectId.Equals(plugincontext2.UserAzureActiveDirectoryObjectId))
+                    {
+                        tracingservice.Trace($"InitAzADUser : {plugincontext2.InitiatingUserAzureActiveDirectoryObjectId}");
+                    }
+                    if (!plugincontext2.InitiatingUserApplicationId.Equals(Guid.Empty))
+                    {
+                        tracingservice.Trace($"InitUserAppId: {plugincontext2.InitiatingUserApplicationId}");
+                    }
+                    if (plugincontext2.IsPortalsClientCall)
+                    {
+                        tracingservice.Trace($"IsPortalsCall: {plugincontext2.IsPortalsClientCall}");
+                    }
+                    if (!plugincontext2.PortalsContactId.Equals(Guid.Empty))
+                    {
+                        tracingservice.Trace($"PortalContact: {plugincontext2.PortalsContactId}");
+                    }
+                }
+                tracingservice.Trace($"Message : {context.MessageName}");
                 if (plugincontext != null)
                 {
-                    tracingservice.Trace("Stage   : {0}", plugincontext.Stage);
+                    tracingservice.Trace($"Stage   : {plugincontext.Stage}");
                 }
-                tracingservice.Trace("Mode    : {0}", context.Mode);
-                tracingservice.Trace("Depth   : {0}", context.Depth);
-                tracingservice.Trace("Entity  : {0}", context.PrimaryEntityName);
+                tracingservice.Trace($"Mode    : {context.Mode}");
+                tracingservice.Trace($"Depth   : {context.Depth}");
+                tracingservice.Trace($"Entity  : {context.PrimaryEntityName}");
                 if (!context.PrimaryEntityId.Equals(Guid.Empty))
                 {
-                    tracingservice.Trace("Id      : {0}", context.PrimaryEntityId);
+                    tracingservice.Trace($"Id      : {context.PrimaryEntityId}");
                 }
                 tracingservice.Trace("");
 
@@ -127,6 +165,11 @@ namespace Rappen.Dataverse.Canary
                 tracingservice.TraceAndAlign("SharedVariables", context.SharedVariables, attributetypes, convertqueries, expandcollections, service);
                 tracingservice.TraceAndAlign("PreEntityImages", context.PreEntityImages, attributetypes, convertqueries, expandcollections, service);
                 tracingservice.TraceAndAlign("PostEntityImages", context.PostEntityImages, attributetypes, convertqueries, expandcollections, service);
+                if (plugincontext4 != null)
+                {
+                    tracingservice.TraceAndAlign("PreEntityImagesCollection", plugincontext4.PreEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                    tracingservice.TraceAndAlign("PostEntityImagesCollection", plugincontext4.PostEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                }
                 tracingservice.Trace("--- Context {0} Trace End ---", depth);
             }
             if (parentcontext && plugincontext?.ParentContext != null)
@@ -134,6 +177,22 @@ namespace Rappen.Dataverse.Canary
                 tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, depth + 1);
             }
             tracingservice.Trace("");
+        }
+
+        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>>[] parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
+        {
+            if (parametercollection == null || parametercollection.Length == 0)
+            {
+                return;
+            }
+            if (parametercollection.Length == 1)
+            {
+                tracingservice.TraceAndAlign(topic, parametercollection[0], attributetypes, convertqueries, expandcollections, service);
+            }
+            else
+            {
+                tracingservice.Trace($"{topic} : {parametercollection.Count()}");
+            }
         }
 
         private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>> parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
@@ -147,6 +206,8 @@ namespace Rappen.Dataverse.Canary
             }
         }
 
+        private static string GetLastType(this object value) => value?.GetType()?.ToString()?.Split('.')?.Last();
+
         public static string ValueToString(object value, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int indent = 1)
         {
             var indentstring = new string(' ', indent * 2);
@@ -156,7 +217,7 @@ namespace Rappen.Dataverse.Canary
             }
             else if (value is EntityCollection collection)
             {
-                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}";
+                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}" + (attributetypes ? $" \t({value.GetLastType()})" : "");
                 if (collection.TotalRecordCount > 0)
                 {
                     result += $"\n  TotalRecordCount: {collection.TotalRecordCount}";
@@ -171,11 +232,11 @@ namespace Rappen.Dataverse.Canary
                 }
                 if (expandcollections && collection.Entities.Count > 0)
                 {
-                    result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent + 1);
+                    result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent);
                 }
-                if (collection.Entities.Count == 1)
+                if (!expandcollections && collection.Entities.Count == 1)
                 {
-                    result += "\n" + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
+                    result += "\n    " + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
                 }
                 return result;
             }
@@ -226,7 +287,7 @@ namespace Rappen.Dataverse.Canary
                 {
                     result = value.ToString().Replace("\n", $"\n  {indentstring}");
                 }
-                return result + (attributetypes ? $" \t({value.GetType()})" : "");
+                return result + (attributetypes ? $" \t({value.GetLastType()})" : "");
             }
         }
 
