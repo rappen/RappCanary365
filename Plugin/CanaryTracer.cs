@@ -2,15 +2,23 @@
  * CanaryTracer.cs
  * Found at: https://jonasr.app/canary
  * Created by: Jonas Rapp https://jonasr.app/
+ * Get full solution: https://jonasr.app/canary/
  *
  * Writes everything from an IExecutionContext to the Plugin Trace Log.
  *
- * Sample call:
- *    tracingservice.TraceContext(context, 
- *        includeparentcontext, 
- *        includeattributetypes, 
- *        convertqueries, 
+ * Simplest call:
+ *    serviceProvider.TraceContext();
+ *
+ * Simple sample call:
+ *    tracingservice.TraceContext(context);
+ *
+ * Advanced sample call:
+ *    tracingservice.TraceContext(context,
+ *        includeparentcontext,
+ *        includeattributetypes,
+ *        convertqueries,
  *        expandcollections,
+ *        includestage30,
  *        service);
  *
  *               Enjoy responsibly.
@@ -28,20 +36,54 @@ namespace Rappen.CDS.Canary
     public static class CanaryTracer
     {
         /// <summary>
+        /// Default settings to trace the context in the easiest way.
+        /// </summary>
+        /// <param name="serviceprovider">The IServiceProvider sent to IPlugin interface.</param>
+        public static void TraceContext(this IServiceProvider serviceprovider) => serviceprovider.TraceContext(false, true, false, false, false);
+
+        /// <summary>
+        /// Dump everything interested from an IServiceProvider, if it contains Tracer and Context.
+        /// </summary>
+        /// <param name="serviceprovider">The IServiceProvider sent to IPlugin interface.</param>
+        /// <param name="parentcontext">Set to true if any parent contexts shall be traced too.</param>
+        /// <param name="attributetypes">Set to true to include information about attribute types.</param>
+        /// <param name="convertqueries">Set to true if any QueryExpression queries shall be converted to FetchXML and traced. Requires parameter service to be set.</param>
+        /// <param name="expandcollections">Set to true if EntityCollection objects should list all contained Entity objects with all fields available.</param>
+        /// <param name="includestage30">Set to true to also include plugins in internal stage.</param>
+        public static void TraceContext(this IServiceProvider serviceprovider, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30)
+        {
+            var tracer = (ITracingService)serviceprovider.GetService(typeof(ITracingService));
+            var context = (IPluginExecutionContext)serviceprovider.GetService(typeof(IPluginExecutionContext));
+            tracer.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, null);
+        }
+
+        /// <summary>
+        /// Default settings for the TraceContext
+        /// </summary>
+        /// <param name="tracingservice">The tracer to trace the trace.</param>
+        /// <param name="context">The plugin or workflow context to trace.</param>
+        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context) => tracingservice.TraceContext(context, false, true, false, false, false, null);
+
+        /// <summary>
         /// Dumps everything interesting from the plugin context to the plugin trace log
         /// </summary>
-        /// <param name="tracingservice"></param>
+        /// <param name="tracingservice">The tracer to trace the trace.</param>
         /// <param name="context">The plugin or workflow context to trace.</param>
         /// <param name="parentcontext">Set to true if any parent contexts shall be traced too.</param>
         /// <param name="attributetypes">Set to true to include information about attribute types.</param>
         /// <param name="convertqueries">Set to true if any QueryExpression queries shall be converted to FetchXML and traced. Requires parameter service to be set.</param>
         /// <param name="expandcollections">Set to true if EntityCollection objects should list all contained Entity objects with all fields available.</param>
+        /// <param name="includestage30">Set to true to also include plugins in internal stage.</param>
         /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
-        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
+        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service)
         {
+            if (tracingservice == null)
+            {
+                return;
+            }
             try
             {
-                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, service, 1);
+                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, 1);
             }
             catch (Exception ex)
             {
@@ -50,10 +92,15 @@ namespace Rappen.CDS.Canary
             }
         }
 
-        private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int depth)
+        private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service, int depth)
         {
+            if (context == null)
+            {
+                tracingservice.Trace("No Context available.");
+                return;
+            }
             var plugincontext = context as IPluginExecutionContext;
-            if (plugincontext?.Stage != 30)
+            if (includestage30 || plugincontext?.Stage != 30)
             {
                 tracingservice.Trace("--- Context {0} Trace Start ---", depth);
                 tracingservice.Trace("Message : {0}", context.MessageName);
@@ -77,16 +124,9 @@ namespace Rappen.CDS.Canary
                 tracingservice.TraceAndAlign("PostEntityImages", context.PostEntityImages, attributetypes, convertqueries, expandcollections, service);
                 tracingservice.Trace("--- Context {0} Trace End ---", depth);
             }
-            if (parentcontext)
+            if (parentcontext && plugincontext?.ParentContext != null)
             {
-                if (plugincontext?.ParentContext != null)
-                {
-                    tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, service, depth + 1);
-                }
-                else if (plugincontext?.ParentContext != null)
-                {
-                    tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, service, depth + 1);
-                }
+                tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, depth + 1);
             }
             tracingservice.Trace("");
         }
@@ -111,7 +151,19 @@ namespace Rappen.CDS.Canary
             }
             else if (value is EntityCollection collection)
             {
-                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}\n  TotalRecordCount: {collection.TotalRecordCount}\n  MoreRecords: {collection.MoreRecords}\n  PagingCookie: {collection.PagingCookie}";
+                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}";
+                if (collection.TotalRecordCount > 0)
+                {
+                    result += $"\n  TotalRecordCount: {collection.TotalRecordCount}";
+                }
+                if (collection.MoreRecords)
+                {
+                    result += $"\n  MoreRecords: {collection.MoreRecords}";
+                }
+                if (!string.IsNullOrWhiteSpace(collection.PagingCookie))
+                {
+                    result += $"\n  PagingCookie: {collection.PagingCookie}";
+                }
                 if (expandcollections && collection.Entities.Count > 0)
                 {
                     result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent + 1);

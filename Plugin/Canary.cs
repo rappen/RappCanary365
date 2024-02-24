@@ -32,9 +32,10 @@ namespace Rappen.Canary365.Plugin
                 var attributetypes = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("ATTRIBUTETYPES=TRUE");
                 var convertqueries = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("CONVERTQUERIES=TRUE");
                 var expandcollections = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("EXPANDCOLLECTIONS=TRUE");
+                var includestage30 = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("INCLUDESTAGE30=TRUE");
 
-                ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, svc);
-     
+                ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, svc);
+
                 var pt = (ILogger)serviceProvider.GetService(typeof(ILogger));
                 try
                 {
