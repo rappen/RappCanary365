@@ -24,7 +24,7 @@
  *               Enjoy responsibly.
  * **********************************************************/
 
-namespace Rappen.CDS.Canary
+namespace Rappen.Dataverse.Canary
 {
     using Microsoft.Crm.Sdk.Messages;
     using Microsoft.Xrm.Sdk;
@@ -103,6 +103,11 @@ namespace Rappen.CDS.Canary
             if (includestage30 || plugincontext?.Stage != 30)
             {
                 tracingservice.Trace("--- Context {0} Trace Start ---", depth);
+                tracingservice.Trace("UserId  : {0}", context.UserId);
+                if (!context.UserId.Equals(context.InitiatingUserId))
+                {
+                    tracingservice.Trace("Initiat.: {0}", context.InitiatingUserId);
+                }
                 tracingservice.Trace("Message : {0}", context.MessageName);
                 if (plugincontext != null)
                 {
@@ -168,6 +173,10 @@ namespace Rappen.CDS.Canary
                 {
                     result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent + 1);
                 }
+                if (collection.Entities.Count == 1)
+                {
+                    result += "\n" + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
+                }
                 return result;
             }
             else if (value is IEnumerable<Entity> entities)
@@ -208,6 +217,10 @@ namespace Rappen.CDS.Canary
                 else if (value is Money money)
                 {
                     result = money.Value.ToString();
+                }
+                else if (value is AliasedValue alias)
+                {
+                    result = ValueToString(alias.Value, attributetypes, convertqueries, expandcollections, service, indent);
                 }
                 else
                 {

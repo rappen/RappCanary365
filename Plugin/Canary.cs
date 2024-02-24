@@ -1,6 +1,6 @@
 ﻿using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.PluginTelemetry;
-using Rappen.CDS.Canary;
+using Rappen.Dataverse.Canary;
 using System;
 
 namespace Rappen.Canary365.Plugin
