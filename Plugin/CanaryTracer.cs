@@ -217,7 +217,7 @@ namespace Rappen.Dataverse.Canary
             }
             else if (value is EntityCollection collection)
             {
-                var result = $"{collection.EntityName} collection\n  Records: {collection.Entities.Count}" + (attributetypes ? $" \t({value.GetLastType()})" : "");
+                var result = $"{collection.Entities.Count} {collection.EntityName}(s)" + (attributetypes ? $" \t({value.GetLastType()})" : "");
                 if (collection.TotalRecordCount > 0)
                 {
                     result += $"\n  TotalRecordCount: {collection.TotalRecordCount}";
@@ -236,7 +236,7 @@ namespace Rappen.Dataverse.Canary
                 }
                 if (!expandcollections && collection.Entities.Count == 1)
                 {
-                    result += "\n    " + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
+                    result += $"\n{indentstring}" + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
                 }
                 return result;
             }
