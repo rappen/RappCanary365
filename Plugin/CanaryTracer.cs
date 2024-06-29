@@ -1,6 +1,6 @@
 ﻿/* ***********************************************************
  * CanaryTracer.cs
- * Found at: https://jonasr.app/canary
+ * Code found at: https://jonasr.app/canary
  * Created by: Jonas Rapp https://jonasr.app/
  * Get full solution: https://jonasr.app/canary/
  *
@@ -118,7 +118,9 @@ namespace Rappen.Dataverse.Canary
                 }
                 if (plugincontext3 != null)
                 {
-                    if (!plugincontext3.AuthenticatedUserId.Equals(Guid.Empty) && !plugincontext3.AuthenticatedUserId.Equals(context.UserId))
+                    if (!plugincontext3.AuthenticatedUserId.Equals(Guid.Empty) &&
+                        !plugincontext3.AuthenticatedUserId.Equals(context.UserId) &&
+                        !plugincontext3.AuthenticatedUserId.Equals(context.InitiatingUserId))
                     {
                         tracingservice.Trace($"AuthUserId   : {plugincontext3.AuthenticatedUserId}");
                     }
@@ -146,6 +148,10 @@ namespace Rappen.Dataverse.Canary
                         tracingservice.Trace($"PortalContact: {plugincontext2.PortalsContactId}");
                     }
                 }
+                if (context.OwningExtension != null)
+                {
+                    tracingservice.Trace($"{(context.OwningExtension.LogicalName == "sdkmessageprocessingstep" ? "Step    " : context.OwningExtension.LogicalName)}: {context.OwningExtension.Id} {context.OwningExtension.Name}");
+                }
                 tracingservice.Trace($"Message : {context.MessageName}");
                 if (plugincontext != null)
                 {
@@ -167,8 +173,14 @@ namespace Rappen.Dataverse.Canary
                 tracingservice.TraceAndAlign("PostEntityImages", context.PostEntityImages, attributetypes, convertqueries, expandcollections, service);
                 if (plugincontext4 != null)
                 {
-                    tracingservice.TraceAndAlign("PreEntityImagesCollection", plugincontext4.PreEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
-                    tracingservice.TraceAndAlign("PostEntityImagesCollection", plugincontext4.PostEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                    if (plugincontext4.PreEntityImagesCollection.Length != 1 || context.PreEntityImages == null)
+                    {
+                        tracingservice.TraceAndAlign("PreEntityImagesCollection", plugincontext4.PreEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                    }
+                    if (plugincontext4.PostEntityImagesCollection.Length != 1 || context.PostEntityImages == null)
+                    {
+                        tracingservice.TraceAndAlign("PostEntityImagesCollection", plugincontext4.PostEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                    }
                 }
                 tracingservice.Trace("--- Context {0} Trace End ---", depth);
             }
@@ -294,6 +306,12 @@ namespace Rappen.Dataverse.Canary
         public static void Write(this ITracingService tracer, string text)
         {
             tracer.Trace(DateTime.Now.ToString("HH:mm:ss.fff  ") + text);
+        }
+
+        public static void TraceError(this IServiceProvider serviceprovider, Exception exception)
+        {
+            var tracer = (ITracingService)serviceprovider.GetService(typeof(ITracingService));
+            tracer.Write(exception.ToString());
         }
     }
 }
