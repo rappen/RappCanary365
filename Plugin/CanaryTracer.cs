@@ -1,8 +1,9 @@
 ﻿/* ***********************************************************
  * CanaryTracer.cs
- * Code found at: https://jonasr.app/canary
+ * Revision: 2024-06-29
+ * Code found at: https://jonasr.app/canary-code
+ * Background: https://jonasr.app/canary/
  * Created by: Jonas Rapp https://jonasr.app/
- * Get full solution: https://jonasr.app/canary/
  *
  * Writes everything from an IExecutionContext to the Plugin Trace Log.
  *
