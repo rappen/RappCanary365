@@ -10,4 +10,4 @@ Use Plugin Trace Viewer for XrmToolBox to view the results.
 
 The [canary](https://en.wiktionary.org/wiki/canary_in_a_coal_mine) can be used to get insights into events occuring in the system, and may help finding gas leaks or other dangerous things in your Micsrosoft Dynamics 365 system.
 
-Read more: https://jonasr.app/2017/09/canary/
+Read more: https://jonasr.app/canary/
