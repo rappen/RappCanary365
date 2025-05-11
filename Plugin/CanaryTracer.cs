@@ -1,6 +1,6 @@
 ﻿/* ***********************************************************
  * CanaryTracer.cs
- * Revision: 2024-06-29
+ * Revision: 2025-01-29
  * Code found at: https://jonasr.app/canary-code
  * Background: https://jonasr.app/canary/
  * Created by: Jonas Rapp https://jonasr.app/
@@ -14,13 +14,28 @@
  *    tracingservice.TraceContext(context);
  *
  * Advanced sample call:
- *    tracingservice.TraceContext(context,
- *        includeparentcontext,
- *        includeattributetypes,
- *        convertqueries,
- *        expandcollections,
- *        includestage30,
- *        service);
+ *    tracingservice.TraceContext(
+ *      context,                This is the Context to trace
+ *      parentcontext,          If this conext has parent context, it will repeat upwards until no parent
+ *      attributetypes,         Include the type of the value, e.g. "Mr Smith (string)"
+ *      convertqueries,         If the value is a QueryExpression, convert to FetchXML
+ *      expandcollections,      If the value is a collection of Entity, stringify all items too
+ *      includestage30,         Stage 30 is internal in the platform, set to true to include
+ *      service,                This is needed if convertqueries is true
+ *      maxitemlength);         If the stringifying is long, we might trim it, defaults to the constant MaxItemLength on line 53
+ *
+ * Simplest way to get anything into text:
+ *    MyAnyObject.ObjectToString();      The object type should probably be any type in Dataverse
+ *
+ * Getting anything into text:
+ *    CanaryTracer.ObjectToString(
+ *      value,                  Any type to stringify, it's extra smart for most Dataverse columns types
+ *      attributetypes,         Include the type of the value, e.g. "Mr Smith (string)"
+ *      convertqueries,         If the value is a QueryExpression, convert to FetchXML
+ *      expandcollections,      If the value is a collection of Entity, stringify all items too
+ *      service,                This is needed if convertqueries is true
+ *      indent,                 Indent length, defaults to 1
+ *      maxitemlength);         If the stringifying is long, we might trim it, defaults to the constant MaxItemLength on line 53
  *
  *               Enjoy responsibly.
  * **********************************************************/
@@ -36,6 +51,8 @@ namespace Rappen.Dataverse.Canary
 
     public static class CanaryTracer
     {
+        private const int MaxItemLength = 200;
+
         /// <summary>
         /// Default settings to trace the context in the easiest way.
         /// </summary>
@@ -63,7 +80,7 @@ namespace Rappen.Dataverse.Canary
         /// </summary>
         /// <param name="tracingservice">The tracer to trace the trace.</param>
         /// <param name="context">The plugin or workflow context to trace.</param>
-        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context) => tracingservice.TraceContext(context, false, true, false, false, false, null);
+        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context) => tracingservice.TraceContext(context, false, true, false, false, false);
 
         /// <summary>
         /// Dumps everything interesting from the plugin context to the plugin trace log
@@ -76,11 +93,11 @@ namespace Rappen.Dataverse.Canary
         /// <param name="expandcollections">Set to true if EntityCollection objects should list all contained Entity objects with all fields available.</param>
         /// <param name="includestage30">Set to true to also include plugins in internal stage.</param>
         /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
-        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service)
+        public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30 = false, IOrganizationService service = null, int maxitemlength = MaxItemLength)
         {
             try
             {
-                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, 1);
+                tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, 1, maxitemlength);
             }
             catch (Exception ex)
             {
@@ -89,7 +106,7 @@ namespace Rappen.Dataverse.Canary
             }
         }
 
-        private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service, int depth)
+        private static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30, IOrganizationService service, int depth, int maxitemlength)
         {
             if (tracingservice == null)
             {
@@ -167,32 +184,32 @@ namespace Rappen.Dataverse.Canary
                 }
                 tracingservice.Trace("");
 
-                tracingservice.TraceAndAlign("InputParameters", context.InputParameters, attributetypes, convertqueries, expandcollections, service);
-                tracingservice.TraceAndAlign("OutputParameters", context.OutputParameters, attributetypes, convertqueries, expandcollections, service);
-                tracingservice.TraceAndAlign("SharedVariables", context.SharedVariables, attributetypes, convertqueries, expandcollections, service);
-                tracingservice.TraceAndAlign("PreEntityImages", context.PreEntityImages, attributetypes, convertqueries, expandcollections, service);
-                tracingservice.TraceAndAlign("PostEntityImages", context.PostEntityImages, attributetypes, convertqueries, expandcollections, service);
+                tracingservice.TraceAndAlign("InputParameters", context.InputParameters, attributetypes, convertqueries, expandcollections, service, maxitemlength);
+                tracingservice.TraceAndAlign("OutputParameters", context.OutputParameters, attributetypes, convertqueries, expandcollections, service, maxitemlength);
+                tracingservice.TraceAndAlign("SharedVariables", context.SharedVariables, attributetypes, convertqueries, expandcollections, service, maxitemlength);
+                tracingservice.TraceAndAlign("PreEntityImages", context.PreEntityImages, attributetypes, convertqueries, expandcollections, service, maxitemlength);
+                tracingservice.TraceAndAlign("PostEntityImages", context.PostEntityImages, attributetypes, convertqueries, expandcollections, service, maxitemlength);
                 if (plugincontext4 != null)
                 {
                     if (plugincontext4.PreEntityImagesCollection.Length != 1 || context.PreEntityImages == null)
                     {
-                        tracingservice.TraceAndAlign("PreEntityImagesCollection", plugincontext4.PreEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                        tracingservice.TraceAndAlign("PreEntityImagesCollection", plugincontext4.PreEntityImagesCollection, attributetypes, convertqueries, expandcollections, service, maxitemlength);
                     }
                     if (plugincontext4.PostEntityImagesCollection.Length != 1 || context.PostEntityImages == null)
                     {
-                        tracingservice.TraceAndAlign("PostEntityImagesCollection", plugincontext4.PostEntityImagesCollection, attributetypes, convertqueries, expandcollections, service);
+                        tracingservice.TraceAndAlign("PostEntityImagesCollection", plugincontext4.PostEntityImagesCollection, attributetypes, convertqueries, expandcollections, service, maxitemlength);
                     }
                 }
                 tracingservice.Trace("--- Context {0} Trace End ---", depth);
             }
             if (parentcontext && plugincontext?.ParentContext != null)
             {
-                tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, depth + 1);
+                tracingservice.TraceContext(plugincontext.ParentContext, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, depth + 1, maxitemlength);
             }
             tracingservice.Trace("");
         }
 
-        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>>[] parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
+        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>>[] parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int maxitemlength)
         {
             if (parametercollection == null || parametercollection.Length == 0)
             {
@@ -200,7 +217,7 @@ namespace Rappen.Dataverse.Canary
             }
             if (parametercollection.Length == 1)
             {
-                tracingservice.TraceAndAlign(topic, parametercollection[0], attributetypes, convertqueries, expandcollections, service);
+                tracingservice.TraceAndAlign(topic, parametercollection[0], attributetypes, convertqueries, expandcollections, service, maxitemlength);
             }
             else
             {
@@ -208,101 +225,125 @@ namespace Rappen.Dataverse.Canary
             }
         }
 
-        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>> parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service)
+        private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>> parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int maxitemlength)
         {
             if (parametercollection == null || parametercollection.Count() == 0) { return; }
             tracingservice.Trace(topic);
             var keylen = parametercollection.Max(p => p.Key.Length);
             foreach (var parameter in parametercollection)
             {
-                tracingservice.Trace($"  {parameter.Key}{new string(' ', keylen - parameter.Key.Length)} = {ValueToString(parameter.Value, attributetypes, convertqueries, expandcollections, service, 2)}");
+                tracingservice.Trace($"  {parameter.Key}{new string(' ', keylen - parameter.Key.Length)} = {ObjectToString(parameter.Value, attributetypes, convertqueries, expandcollections, service, 2, maxitemlength)}");
             }
         }
 
-        private static string GetLastType(this object value) => value?.GetType()?.ToString()?.Split('.')?.Last();
+        private static string GetLastType(this object value) => value?.GetType()?.ToString()?.Split('.')?.Last() ?? "";
 
-        public static string ValueToString(object value, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int indent = 1)
+        public static string ObjectToString(this object value) => ObjectToString(value, true, false, false);
+
+        public static string ObjectToString(object value, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service = null, int indent = 1, int maxitemlength = MaxItemLength)
         {
-            var indentstring = new string(' ', indent * 2);
-            if (value == null)
+            try
             {
-                return $"{indentstring}<null>";
-            }
-            else if (value is EntityCollection collection)
-            {
-                var result = $"{collection.Entities.Count} {collection.EntityName}(s)" + (attributetypes ? $" \t({value.GetLastType()})" : "");
-                if (collection.TotalRecordCount > 0)
+                var indentstring = new string(' ', indent * 2);
+                if (value == null)
                 {
-                    result += $"\n  TotalRecordCount: {collection.TotalRecordCount}";
+                    return $"{indentstring}<null>";
                 }
-                if (collection.MoreRecords)
+                else if (value is EntityCollection collection)
                 {
-                    result += $"\n  MoreRecords: {collection.MoreRecords}";
+                    var result = $"{collection.Entities.Count} {collection.EntityName}(s)" + (attributetypes ? $" \t({value.GetLastType()})" : "");
+                    if (collection.TotalRecordCount > 0)
+                    {
+                        result += $"\n  TotalRecordCount: {collection.TotalRecordCount}";
+                    }
+                    if (collection.MoreRecords)
+                    {
+                        result += $"\n  MoreRecords: {collection.MoreRecords}";
+                    }
+                    if (!string.IsNullOrWhiteSpace(collection.PagingCookie))
+                    {
+                        result += $"\n  PagingCookie: {collection.PagingCookie}";
+                    }
+                    if (expandcollections && collection.Entities.Count > 0)
+                    {
+                        result += "\n" + ObjectToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent, maxitemlength);
+                    }
+                    if (!expandcollections && collection.Entities.Count == 1)
+                    {
+                        result += $"\n{indentstring}" + ObjectToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1, maxitemlength);
+                    }
+                    return result;
                 }
-                if (!string.IsNullOrWhiteSpace(collection.PagingCookie))
+                else if (value is IEnumerable<Entity> entities)
                 {
-                    result += $"\n  PagingCookie: {collection.PagingCookie}";
+                    return expandcollections ? $"{indentstring}{string.Join($"\n{indentstring}", entities.Select(e => ObjectToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1, maxitemlength)))}" : string.Empty;
                 }
-                if (expandcollections && collection.Entities.Count > 0)
+                else if (value is Entity entity)
                 {
-                    result += "\n" + ValueToString(collection.Entities, attributetypes, convertqueries, expandcollections, service, indent);
+                    var keylen = entity.Attributes.Count > 0 ? entity.Attributes.Max(p => p.Key.Length) : 50;
+                    return $"{entity.LogicalName} {entity.Id}\n{indentstring}" +
+                        string.Join($"\n{indentstring}",
+                            entity.Attributes
+                                .OrderBy(a => a.Key)
+                                .Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ObjectToString(a.Value, attributetypes, convertqueries, expandcollections, service, indent + 1, maxitemlength)}"));
                 }
-                if (!expandcollections && collection.Entities.Count == 1)
+                else if (value is ColumnSet columnset)
                 {
-                    result += $"\n{indentstring}" + ValueToString(collection.Entities[0], attributetypes, convertqueries, expandcollections, service, indent + 1);
+                    var columnlist = new List<string>(columnset.Columns);
+                    columnlist.Sort();
+                    return $"\n{indentstring}" + string.Join($"\n{indentstring}", columnlist);
                 }
-                return result;
-            }
-            else if (value is IEnumerable<Entity> entities)
-            {
-                return expandcollections ? $"{indentstring}{string.Join($"\n{indentstring}", entities.Select(e => ValueToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1)))}" : string.Empty;
-            }
-            else if (value is Entity entity)
-            {
-                var keylen = entity.Attributes.Count > 0 ? entity.Attributes.Max(p => p.Key.Length) : 50;
-                return $"{entity.LogicalName} {entity.Id}\n{indentstring}" + string.Join($"\n{indentstring}", entity.Attributes.OrderBy(a => a.Key).Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ValueToString(a.Value, attributetypes, convertqueries, expandcollections, service, indent + 1)}"));
-            }
-            else if (value is ColumnSet columnset)
-            {
-                var columnlist = new List<string>(columnset.Columns);
-                columnlist.Sort();
-                return $"\n{indentstring}" + string.Join($"\n{indentstring}", columnlist);
-            }
-            else if (value is FetchExpression fetchexpression)
-            {
-                return $"{value}\n{indentstring}{fetchexpression.Query}";
-            }
-            else if (value is QueryExpression queryexpression && convertqueries && service != null)
-            {
-                var fetchxml = (service.Execute(new QueryExpressionToFetchXmlRequest { Query = queryexpression }) as QueryExpressionToFetchXmlResponse).FetchXml;
-                return $"{queryexpression}\n{indentstring}{fetchxml}";
-            }
-            else
-            {
-                var result = string.Empty;
-                if (value is EntityReference entityreference)
+                else if (value is FetchExpression fetchexpression)
                 {
-                    result = $"{entityreference.LogicalName} {entityreference.Id} {entityreference.Name}";
+                    return $"{value}\n{indentstring}{fetchexpression.Query}";
                 }
-                else if (value is OptionSetValue optionsetvalue)
+                else if (value is QueryExpression queryexpression && convertqueries && service != null)
                 {
-                    result = optionsetvalue.Value.ToString();
-                }
-                else if (value is Money money)
-                {
-                    result = money.Value.ToString();
-                }
-                else if (value is AliasedValue alias)
-                {
-                    result = ValueToString(alias.Value, attributetypes, convertqueries, expandcollections, service, indent);
+                    var fetchxml = (service.Execute(new QueryExpressionToFetchXmlRequest { Query = queryexpression }) as QueryExpressionToFetchXmlResponse).FetchXml;
+                    return $"{queryexpression}\n{indentstring}{fetchxml}";
                 }
                 else
                 {
-                    result = value.ToString().Replace("\n", $"\n  {indentstring}");
+                    var result = string.Empty;
+                    if (value is EntityReference entityreference)
+                    {
+                        result = $"{entityreference.LogicalName} {entityreference.Id} {entityreference.Name}";
+                    }
+                    else if (value is OptionSetValue optionsetvalue)
+                    {
+                        result = optionsetvalue.Value.ToString();
+                    }
+                    else if (value is OptionSetValueCollection optcoll)
+                    {
+                        result = string.Join(";", optcoll.Select(o => o.Value));
+                    }
+                    else if (value is Money money)
+                    {
+                        result = money.Value.ToString();
+                    }
+                    else if (value is AliasedValue alias)
+                    {
+                        result = ObjectToString(alias.Value, attributetypes, convertqueries, expandcollections, service, indent, maxitemlength);
+                    }
+                    else
+                    {
+                        result = value.ToString().Replace("\n", $"\n  {indentstring}");
+                        if (result.Length > maxitemlength)
+                        {
+                            result = result.Substring(0, maxitemlength) + $"... ({result.Length})";
+                        }
+                    }
+                    return result + (attributetypes ? $" \t({value.GetLastType()})" : "");
                 }
-                return result + (attributetypes ? $" \t({value.GetLastType()})" : "");
+            }
+            catch (Exception ex)
+            {
+                return $"*** Cannot stringify value:{value}\n*** {ex.Message}";
             }
         }
+
+        [Obsolete("Please use method ObjectToString instead - same features, and more!")]
+        public static string ValueToString(object value, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int indent = 1, int maxitemlength = MaxItemLength) => ObjectToString(value, attributetypes, convertqueries, expandcollections, service, indent, maxitemlength);
 
         public static void Write(this ITracingService tracer, string text)
         {
@@ -311,8 +352,8 @@ namespace Rappen.Dataverse.Canary
 
         public static void TraceError(this IServiceProvider serviceprovider, Exception exception)
         {
-            var tracer = (ITracingService)serviceprovider.GetService(typeof(ITracingService));
-            tracer.Write(exception.ToString());
+            var tracer = serviceprovider.GetService(typeof(ITracingService)) as ITracingService;
+            tracer?.Write(exception.ToString());
         }
     }
 }
