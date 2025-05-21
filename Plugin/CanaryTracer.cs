@@ -1,6 +1,6 @@
 ﻿/* ***********************************************************
  * CanaryTracer.cs
- * Revision: 2025-01-29
+ * Revision: 2025-05-21
  * Code found at: https://jonasr.app/canary-code
  * Background: https://jonasr.app/canary/
  * Created by: Jonas Rapp https://jonasr.app/
@@ -286,6 +286,10 @@ namespace Rappen.Dataverse.Canary
                             entity.Attributes
                                 .OrderBy(a => a.Key)
                                 .Select(a => $"{a.Key}{new string(' ', keylen - a.Key.Length)} = {ObjectToString(a.Value, attributetypes, convertqueries, expandcollections, service, indent + 1, maxitemlength)}"));
+                }
+                else if (value is EntityReferenceCollection entrefcol)
+                {
+                    return $"\n{indentstring}{string.Join($"\n{indentstring}", entrefcol.Select(e => ObjectToString(e, attributetypes, convertqueries, expandcollections, service, indent + 1, maxitemlength)))}";
                 }
                 else if (value is ColumnSet columnset)
                 {
