@@ -1,6 +1,6 @@
 ﻿/* ***********************************************************
  * CanaryTracer.cs
- * Revision: 2025-05-21
+ * Revision: 2025-10-27
  * Code found at: https://jonasr.app/canary-code
  * Background: https://jonasr.app/canary/
  * Created by: Jonas Rapp https://jonasr.app/
@@ -70,6 +70,10 @@ namespace Rappen.Dataverse.Canary
         /// <param name="includestage30">Set to true to also include plugins in internal stage.</param>
         public static void TraceContext(this IServiceProvider serviceprovider, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30)
         {
+            if (serviceprovider == null)
+            {
+                return;
+            }
             var tracer = (ITracingService)serviceprovider.GetService(typeof(ITracingService));
             var context = (IPluginExecutionContext)serviceprovider.GetService(typeof(IPluginExecutionContext));
             tracer.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, null);
@@ -95,6 +99,10 @@ namespace Rappen.Dataverse.Canary
         /// <param name="service">Service used if convertqueries is true, may be null if not used.</param>
         public static void TraceContext(this ITracingService tracingservice, IExecutionContext context, bool parentcontext, bool attributetypes, bool convertqueries, bool expandcollections, bool includestage30 = false, IOrganizationService service = null, int maxitemlength = MaxItemLength)
         {
+            if (tracingservice == null)
+            {
+                return;
+            }
             try
             {
                 tracingservice.TraceContext(context, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, service, 1, maxitemlength);
@@ -122,9 +130,23 @@ namespace Rappen.Dataverse.Canary
             var plugincontext3 = context as IPluginExecutionContext3;
             var plugincontext4 = context as IPluginExecutionContext4;
             var plugincontext5 = context as IPluginExecutionContext5;
+            var plugincontext6 = context as IPluginExecutionContext6;
+            var plugincontext7 = context as IPluginExecutionContext7;
             if (includestage30 || plugincontext?.Stage != 30)
             {
                 tracingservice.Trace($"--- Context {depth} Trace Start ---");
+                if (!Guid.Empty.Equals(plugincontext6?.TenantId ?? Guid.Empty))
+                {
+                    tracingservice.Trace($"TenantId     : {plugincontext6.TenantId}");
+                }
+                if (!string.IsNullOrEmpty(plugincontext6?.EnvironmentId))
+                {
+                    tracingservice.Trace($"EnvironmentId: {plugincontext6.EnvironmentId}");
+                }
+                if (plugincontext7 != null)
+                {
+                    tracingservice.Trace($"IsApplicUser : {plugincontext7.IsApplicationUser}");
+                }
                 if (!string.IsNullOrEmpty(plugincontext5?.InitiatingUserAgent))
                 {
                     tracingservice.Trace($"InitUserAgent: {plugincontext5.InitiatingUserAgent}");
@@ -211,7 +233,7 @@ namespace Rappen.Dataverse.Canary
 
         private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>>[] parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int maxitemlength)
         {
-            if (parametercollection == null || parametercollection.Length == 0)
+            if (tracingservice == null || parametercollection == null || parametercollection.Length == 0)
             {
                 return;
             }
@@ -227,7 +249,10 @@ namespace Rappen.Dataverse.Canary
 
         private static void TraceAndAlign<T>(this ITracingService tracingservice, string topic, IEnumerable<KeyValuePair<string, T>> parametercollection, bool attributetypes, bool convertqueries, bool expandcollections, IOrganizationService service, int maxitemlength)
         {
-            if (parametercollection == null || parametercollection.Count() == 0) { return; }
+            if (tracingservice == null || parametercollection == null || parametercollection.Count() == 0)
+            {
+                return;
+            }
             tracingservice.Trace(topic);
             var keylen = parametercollection.Max(p => p.Key.Length);
             foreach (var parameter in parametercollection)
@@ -351,11 +376,19 @@ namespace Rappen.Dataverse.Canary
 
         public static void Write(this ITracingService tracer, string text)
         {
+            if (tracer == null)
+            {
+                return;
+            }
             tracer.Trace(DateTime.Now.ToString("HH:mm:ss.fff  ") + text);
         }
 
         public static void TraceError(this IServiceProvider serviceprovider, Exception exception)
         {
+            if (serviceprovider == null || exception == null)
+            {
+                return;
+            }
             var tracer = serviceprovider.GetService(typeof(ITracingService)) as ITracingService;
             tracer?.Write(exception.ToString());
         }
