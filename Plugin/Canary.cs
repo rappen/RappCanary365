@@ -39,9 +39,10 @@ namespace Rappen.Canary365.Plugin
                     var convertqueries = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("CONVERTQUERIES=TRUE");
                     var expandcollections = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("EXPANDCOLLECTIONS=TRUE");
                     var includestage30 = !string.IsNullOrEmpty(_unsec) && _unsec.ToUpperInvariant().Contains("INCLUDESTAGE30=TRUE");
+                    var sanitize = string.IsNullOrEmpty(_unsec) || !_unsec.ToUpperInvariant().Contains("SANITIZE=FALSE");
 
                     // Calling CanaryTracer!
-                    ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, svc);
+                    ts.TraceContext(ctx, parentcontext, attributetypes, convertqueries, expandcollections, includestage30, svc, sanitize: sanitize);
 
                     // Trying to use the ILogger service
                     var pt = (ILogger)serviceProvider.GetService(typeof(ILogger));
